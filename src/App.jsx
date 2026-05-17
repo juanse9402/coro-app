@@ -228,7 +228,7 @@ export default function App() {
       else if (rawLine.includes('[ESTROFA]') || rawLine.includes('ESTROFA:') || rawLine === 'ESTROFA' || rawLine.includes('VERSO')) sectionId = 'section-estrofa';
       else if (rawLine.includes('[PUENTE]') || rawLine.includes('PUENTE:') || rawLine === 'PUENTE') sectionId = 'section-puente';
 
-      if (!line.includes('[')) return <div key={idx} id={sectionId || undefined} className={`min-h-12 mb-6 font-mono leading-loose ${fullScreen ? 'text-3xl' : 'text-xl lg:text-2xl'}`}>{line}</div>;
+      if (!line.includes('[')) return <div key={idx} id={sectionId || undefined} className={`min-h-12 mb-6 font-mono leading-loose ${fullScreen ? 'text-[7vw] md:text-3xl' : 'text-[1.2rem] md:text-[1.8rem]'}`}>{line}</div>;
       
       const regex = /\[(.*?)\]([^\[]*)/g;
       const parts = [];
@@ -244,14 +244,14 @@ export default function App() {
       return (
         <div key={idx} id={sectionId || undefined} className="flex flex-wrap items-end mb-10 mt-4">
           {parts.map((p, i) => (
-            <div key={i} className="flex flex-col items-start" style={{ marginRight: p.lyric.endsWith(' ') ? '0.5em' : '0' }}>
+            <div key={i} className="flex flex-col items-start break-inside-avoid" style={{ marginRight: p.lyric.endsWith(' ') ? '0.5em' : '0' }}>
               <span 
-                className={`font-mono font-bold h-8 mb-3 ${fullScreen ? 'text-2xl' : 'text-base'}`}
+                className={`font-mono font-bold h-8 mb-3 ${fullScreen ? 'text-[5vw] md:text-2xl' : 'text-[1.1rem] md:text-[1.5rem]'}`}
                 style={{ color: theme === 'stage' ? '#00FFFF' : '#2563EB' }}
               >
                 {p.chord ? getTransposition(p.chord) : ''}
               </span>
-              <span className={`font-mono whitespace-pre ${fullScreen ? 'text-3xl' : 'text-xl lg:text-2xl'}`}>{p.lyric.replace(/ /g, '\u00A0')}</span>
+              <span className={`font-mono whitespace-pre-wrap break-words ${fullScreen ? 'text-[7vw] md:text-3xl' : 'text-[1.2rem] md:text-[1.8rem]'}`}>{p.lyric.replace(/ /g, '\u00A0')}</span>
             </div>
           ))}
         </div>
@@ -368,7 +368,7 @@ export default function App() {
   const hasPrevSetlist = currentSetlistIdx > 0;
 
   return (
-    <div className={`min-h-screen flex flex-col items-center transition-all duration-300 pb-32 ${fullScreen ? 'p-2' : 'py-6 px-4'}`}>
+    <div className={`min-h-screen flex flex-col items-center transition-all duration-300 pb-40 ${fullScreen ? 'p-2' : 'py-6 px-4'}`}>
       <AnimatePresence>
         {aiToast && (
           <motion.div 
@@ -391,9 +391,9 @@ export default function App() {
             {syncStatus === 'offline' && <div className="flex items-center gap-1 text-xs font-bold text-gray-400 bg-gray-500/10 px-2 py-1 rounded-full" title="Modo Offline"><CloudOff size={14} /> Local</div>}
           </div>
           <div className="flex gap-2 bg-gray-100/10 p-1 rounded-full backdrop-blur-md shadow-sm border border-gray-200/20">
-            <button onClick={() => setTheme('sun')} className={`p-2 rounded-full transition-all ${theme === 'sun' ? 'bg-white shadow-md text-black' : 'text-gray-500'}`}><Sun size={18} /></button>
-            <button onClick={() => setTheme('stage')} className={`p-2 rounded-full transition-all ${theme === 'stage' ? 'bg-black shadow-md text-amber-500 border border-amber-500/30' : 'text-gray-500'}`}><Moon size={18} /></button>
-            <button onClick={() => setTheme('standard')} className={`p-2 rounded-full transition-all ${theme === 'standard' ? 'bg-blue-500 shadow-md text-white' : 'text-gray-500'}`}><Monitor size={18} /></button>
+            <button onClick={() => setTheme('sun')} className={`min-w-[44px] min-h-[44px] flex justify-center items-center rounded-full transition-all ${theme === 'sun' ? 'bg-white shadow-md text-black' : 'text-gray-500'}`}><Sun size={18} /></button>
+            <button onClick={() => setTheme('stage')} className={`min-w-[44px] min-h-[44px] flex justify-center items-center rounded-full transition-all ${theme === 'stage' ? 'bg-black shadow-md text-amber-500 border border-amber-500/30' : 'text-gray-500'}`}><Moon size={18} /></button>
+            <button onClick={() => setTheme('standard')} className={`min-w-[44px] min-h-[44px] flex justify-center items-center rounded-full transition-all ${theme === 'standard' ? 'bg-blue-500 shadow-md text-white' : 'text-gray-500'}`}><Monitor size={18} /></button>
           </div>
         </div>
       )}
@@ -409,7 +409,7 @@ export default function App() {
             <div className="relative w-full mb-8">
               <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none"><Search className="text-gray-400" size={20} /></div>
               <input type="text" className="w-full pl-12 pr-16 py-4 rounded-2xl border-2 bg-transparent transition-all outline-none text-lg font-medium" style={{ borderColor: theme === 'stage' ? '#333' : '#e5e7eb' }} placeholder="Busca por ID (ej. A15) o título..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-              <button onClick={toggleVoiceSearch} className={`absolute inset-y-2 right-2 px-3 rounded-xl flex items-center transition-all ${isListening ? 'bg-red-500 text-white animate-pulse' : 'bg-gray-200/20 text-gray-400'}`}><Mic size={20} /></button>
+              <button onClick={toggleVoiceSearch} className={`absolute inset-y-2 right-2 px-3 min-w-[44px] min-h-[44px] rounded-xl flex justify-center items-center transition-all ${isListening ? 'bg-red-500 text-white animate-pulse' : 'bg-gray-200/20 text-gray-400'}`}><Mic size={20} /></button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
@@ -501,7 +501,7 @@ export default function App() {
             
             <div 
               onClick={(e) => e.stopPropagation()} 
-              className={`flex flex-col mb-12 gap-4 sticky z-50 rounded-2xl shadow-2xl backdrop-blur-3xl ${fullScreen ? 'top-2 p-4 -mx-2 opacity-30 hover:opacity-100 transition-opacity' : 'top-4 p-6 -mx-4 md:mx-0'}`} 
+              className={`flex flex-col gap-4 sticky z-50 rounded-2xl shadow-2xl backdrop-blur-3xl ${fullScreen ? 'bottom-4 md:top-2 md:bottom-auto p-4 -mx-2 opacity-30 hover:opacity-100 transition-opacity' : 'bottom-4 md:top-4 md:bottom-auto p-4 md:p-6 -mx-4 md:mx-0 mb-8 md:mb-12'}`} 
               style={{ backgroundColor: theme === 'stage' ? 'rgba(0,0,0,0.95)' : 'rgba(255,255,255,0.95)', borderColor: theme === 'stage' ? '#444' : '#eee', borderWidth: '1px' }}
             >
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -513,7 +513,7 @@ export default function App() {
                       <select 
                         value={instrument} 
                         onChange={(e) => setInstrument(e.target.value)}
-                        className="text-sm px-3 py-1 bg-blue-500/10 text-blue-500 dark:bg-amber-500/10 dark:text-amber-500 border border-blue-500/20 dark:border-amber-500/20 rounded-xl outline-none cursor-pointer"
+                        className="text-base px-3 py-2 min-h-[44px] bg-blue-500/10 text-blue-500 dark:bg-amber-500/10 dark:text-amber-500 border border-blue-500/20 dark:border-amber-500/20 rounded-xl outline-none cursor-pointer"
                       >
                         <option value="guitar">Piano/Guitarra</option>
                         <option value="sax-alto">Saxo Alto</option>
@@ -533,14 +533,14 @@ export default function App() {
                 </div>
                 
                 <div className="flex flex-wrap items-center gap-2">
-                  <button onClick={() => setFullScreen(!fullScreen)} className="p-2 rounded-xl bg-gray-500/10 hover:bg-gray-500/20 transition-all text-gray-500" title="Pantalla Completa">
+                  <button onClick={() => setFullScreen(!fullScreen)} className="min-w-[44px] min-h-[44px] flex justify-center items-center rounded-xl bg-gray-500/10 hover:bg-gray-500/20 transition-all text-gray-500" title="Pantalla Completa">
                     {fullScreen ? <Minimize size={20} /> : <Maximize size={20} />}
                   </button>
 
                   <div className="flex items-center gap-1 bg-gray-500/10 p-1 rounded-xl">
-                    <button onClick={() => setScrollMultiplier(m => Math.max(0.5, m - 0.1))} className="p-2 rounded-lg hover:bg-gray-500/20"><Minus size={14}/></button>
+                    <button onClick={() => setScrollMultiplier(m => Math.max(0.5, m - 0.1))} className="min-w-[44px] min-h-[44px] flex justify-center items-center rounded-lg hover:bg-gray-500/20"><Minus size={14}/></button>
                     <span className="font-mono text-xs font-bold w-6 text-center" title="Multiplicador de Velocidad">{scrollMultiplier.toFixed(1)}x</span>
-                    <button onClick={() => setScrollMultiplier(m => Math.min(3.0, m + 0.1))} className="p-2 rounded-lg hover:bg-gray-500/20"><Plus size={14}/></button>
+                    <button onClick={() => setScrollMultiplier(m => Math.min(3.0, m + 0.1))} className="min-w-[44px] min-h-[44px] flex justify-center items-center rounded-lg hover:bg-gray-500/20"><Plus size={14}/></button>
                   </div>
 
                   <button 
@@ -552,7 +552,7 @@ export default function App() {
                         setScrollStatus('idle');
                       }
                     }} 
-                    className={`flex items-center gap-2 p-2 px-4 rounded-xl font-bold transition-all ${scrollStatus === 'scrolling' ? 'bg-red-500 text-white animate-pulse shadow-md shadow-red-500/20' : scrollStatus === 'preroll' ? 'bg-amber-500 text-black shadow-md shadow-amber-500/20' : 'bg-gray-200/20 text-gray-500 hover:bg-gray-200/40'}`}
+                    className={`flex items-center justify-center gap-2 px-4 min-h-[44px] rounded-xl font-bold transition-all ${scrollStatus === 'scrolling' ? 'bg-red-500 text-white animate-pulse shadow-md shadow-red-500/20' : scrollStatus === 'preroll' ? 'bg-amber-500 text-black shadow-md shadow-amber-500/20' : 'bg-gray-200/20 text-gray-500 hover:bg-gray-200/40'}`}
                   >
                     {scrollStatus === 'scrolling' ? <Pause size={18} /> : scrollStatus === 'preroll' ? <Drum size={18} className="animate-bounce" /> : <ChevronDown size={18} />} 
                     {!fullScreen && (scrollStatus === 'scrolling' ? 'Pausar' : scrollStatus === 'preroll' ? `Inicia en ${prerollCount}...` : 'Auto-Scroll')}
@@ -560,9 +560,9 @@ export default function App() {
                   
                   {!fullScreen && (
                     <div className="flex items-center gap-1 bg-black/5 dark:bg-white/5 p-1 rounded-xl border border-black/10 dark:border-white/10">
-                      <button onClick={() => setTransposeSteps(s => s - 1)} className="p-2 rounded-lg bg-black/10 dark:bg-white/10 hover:bg-black/20"><Minus size={16} /></button>
+                      <button onClick={() => setTransposeSteps(s => s - 1)} className="min-w-[44px] min-h-[44px] flex justify-center items-center rounded-lg bg-black/10 dark:bg-white/10 hover:bg-black/20"><Minus size={16} /></button>
                       <span className="font-mono font-bold w-12 text-center" title="Transpositor Base">{transposeSteps > 0 ? `+${transposeSteps}` : transposeSteps}</span>
-                      <button onClick={() => setTransposeSteps(s => s + 1)} className="p-2 rounded-lg bg-black/10 dark:bg-white/10 hover:bg-black/20"><Plus size={16} /></button>
+                      <button onClick={() => setTransposeSteps(s => s + 1)} className="min-w-[44px] min-h-[44px] flex justify-center items-center rounded-lg bg-black/10 dark:bg-white/10 hover:bg-black/20"><Plus size={16} /></button>
                     </div>
                   )}
                 </div>
