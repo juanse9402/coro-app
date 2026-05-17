@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+@theme {
+  --color-amber: #FFBF00;
+  --color-neon: #39FF14;
+}
+
+:root {
+  --bg-color: #ffffff;
+  --text-color: #000000;
+  --icon-color: #000000;
+}
+
+.theme-sun {
+  --bg-color: #ffffff;
+  --text-color: #000000;
+  --icon-color: #000000;
+}
+
+.theme-stage {
+  --bg-color: #000000;
+  --text-color: var(--color-amber);
+  --icon-color: var(--color-amber);
+}
+
+.theme-stage.neon-text {
+  --text-color: var(--color-neon);
+  --icon-color: var(--color-neon);
+}
+
+body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  transition: background-color 0.3s, color 0.3s;
+  font-family: 'Inter', sans-serif;
+}
+
+@theme {
+  --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+}
