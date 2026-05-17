@@ -390,7 +390,7 @@ export default function App() {
             {syncStatus === 'synced' && <div className="flex items-center gap-1 text-xs font-bold text-green-500 bg-green-500/10 px-2 py-1 rounded-full" title="Sincronizado con la nube"><CloudCheck size={14} /> Sync</div>}
             {syncStatus === 'offline' && <div className="flex items-center gap-1 text-xs font-bold text-gray-400 bg-gray-500/10 px-2 py-1 rounded-full" title="Modo Offline"><CloudOff size={14} /> Local</div>}
           </div>
-          <div className="flex gap-2 bg-gray-100/10 p-1 rounded-full backdrop-blur-md shadow-sm border border-gray-200/20">
+          <div className="hidden md:flex gap-2 bg-gray-100/10 p-1 rounded-full backdrop-blur-md shadow-sm border border-gray-200/20">
             <button onClick={() => setTheme('sun')} className={`min-w-[44px] min-h-[44px] flex justify-center items-center rounded-full transition-all ${theme === 'sun' ? 'bg-white shadow-md text-black' : 'text-gray-500'}`}><Sun size={18} /></button>
             <button onClick={() => setTheme('stage')} className={`min-w-[44px] min-h-[44px] flex justify-center items-center rounded-full transition-all ${theme === 'stage' ? 'bg-black shadow-md text-amber-500 border border-amber-500/30' : 'text-gray-500'}`}><Moon size={18} /></button>
             <button onClick={() => setTheme('standard')} className={`min-w-[44px] min-h-[44px] flex justify-center items-center rounded-full transition-all ${theme === 'standard' ? 'bg-blue-500 shadow-md text-white' : 'text-gray-500'}`}><Monitor size={18} /></button>
@@ -398,27 +398,26 @@ export default function App() {
         </div>
       )}
 
-      <AnimatePresence mode="wait">
+         <AnimatePresence mode="wait">
         {!selectedSong ? (
           <motion.div 
             key="dashboard"
             initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-            className="w-full max-w-4xl p-6 md:p-8 rounded-3xl shadow-2xl backdrop-blur-xl border relative"
-            style={{ backgroundColor: theme === 'stage' ? '#111' : theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.9)', borderColor: theme === 'stage' ? '#333' : '#eee' }}
+            className="w-full max-w-4xl p-0 md:p-8 md:rounded-3xl md:shadow-2xl md:backdrop-blur-xl md:border relative"
+            style={{ backgroundColor: window.innerWidth >= 768 ? (theme === 'stage' ? '#111' : theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.9)') : 'transparent', borderColor: theme === 'stage' ? '#333' : '#eee' }}
           >
-            <div className="relative w-full mb-8">
-              <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none"><Search className="text-gray-400" size={20} /></div>
-              <input type="text" className="w-full pl-12 pr-16 py-4 rounded-2xl border-2 bg-transparent transition-all outline-none text-lg font-medium" style={{ borderColor: theme === 'stage' ? '#333' : '#e5e7eb' }} placeholder="Busca por ID (ej. A15) o título..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-              <button onClick={toggleVoiceSearch} className={`absolute inset-y-2 right-2 px-3 min-w-[44px] min-h-[44px] rounded-xl flex justify-center items-center transition-all ${isListening ? 'bg-red-500 text-white animate-pulse' : 'bg-gray-200/20 text-gray-400'}`}><Mic size={20} /></button>
+            <div className="relative w-full max-w-[600px] mx-auto mb-8 px-4 md:px-0">
+              <div className="absolute inset-y-0 left-8 md:left-4 flex items-center pointer-events-none"><Search className="text-gray-400" size={20} /></div>
+              <input type="text" className="w-full pl-12 pr-4 py-4 rounded-2xl border-2 bg-transparent transition-all outline-none text-lg font-medium" style={{ borderColor: theme === 'stage' ? '#333' : '#e5e7eb' }} placeholder="Busca por ID o título..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 max-w-[600px] mx-auto w-[calc(100%-2rem)]">
               <InstrumentCard active={instrument === 'guitar'} onClick={() => setInstrument('guitar')} icon={<Guitar />} title="Guitarra/Piano" theme={theme} />
               <InstrumentCard active={instrument === 'sax-alto'} onClick={() => setInstrument('sax-alto')} icon={<Music />} title="Saxo Alto (Eb)" theme={theme} />
               <InstrumentCard active={instrument === 'sax-tenor'} onClick={() => setInstrument('sax-tenor')} icon={<Music />} title="Saxo Tenor (Bb)" theme={theme} />
             </div>
 
-            <div className="space-y-3">
+            <div className="w-[calc(100%-2rem)] max-w-[600px] mx-auto space-y-3 pb-24">
               {displaySongs.map(song => {
                 const inSetlist = setlist.some(s => s.id === song.id);
                 return (
@@ -446,7 +445,7 @@ export default function App() {
                           e.stopPropagation();
                           if (!inSetlist) setSetlist([...setlist, song]);
                         }}
-                        className={`p-2 rounded-xl border transition-all ${inSetlist ? 'bg-green-500/20 text-green-500 border-green-500/30' : 'bg-gray-100 dark:bg-[#222] text-gray-400 border-transparent hover:border-gray-300 dark:hover:border-gray-500'}`}
+                        className={`min-w-[44px] min-h-[44px] flex justify-center items-center p-2 rounded-xl border transition-all ${inSetlist ? 'bg-green-500/20 text-green-500 border-green-500/30' : 'bg-gray-100 dark:bg-[#222] text-gray-400 border-transparent hover:border-gray-300 dark:hover:border-gray-500'}`}
                         title={inSetlist ? "En el Setlist" : "Añadir al Setlist"}
                       >
                         {inSetlist ? <ListOrdered size={20} /> : <ListPlus size={20} />}
@@ -459,15 +458,26 @@ export default function App() {
               {searchQuery.trim().length > 0 && displaySongs.length >= 20 && <p className="text-center opacity-50 text-sm mt-4 font-mono">Mostrando 20 resultados principales. Escribe más para filtrar.</p>}
             </div>
 
-            {/* Floating Setlist Button */}
-            {setlist.length > 0 && (
+            {/* Floating Action Buttons */}
+            <div className="fixed bottom-[20px] left-0 right-0 pointer-events-none flex justify-between px-[20px] z-50">
+              {/* Setlist FAB (Left) */}
               <button 
                 onClick={() => setShowSetlist(true)}
-                className="absolute -bottom-6 left-1/2 -translate-x-1/2 bg-blue-600 text-white dark:bg-amber-500 dark:text-black px-6 py-3 rounded-full shadow-xl font-bold flex items-center gap-2 hover:scale-105 transition-transform"
+                className="pointer-events-auto bg-amber-500 text-black min-w-[56px] min-h-[56px] rounded-full shadow-2xl hover:scale-110 transition-transform flex justify-center items-center gap-2 px-4"
               >
-                <ListOrdered size={20} /> Setlist ({setlist.length})
+                <ListOrdered size={24} />
+                {setlist.length > 0 && <span className="font-bold bg-white text-black px-2 rounded-full text-sm">{setlist.length}</span>}
               </button>
-            )}
+
+              {/* Voice AI FAB (Right) */}
+              <button 
+                onClick={toggleVoiceSearch}
+                className={`pointer-events-auto min-w-[64px] min-h-[64px] rounded-full shadow-2xl hover:scale-110 transition-all flex justify-center items-center ${isListening ? 'bg-red-500 text-white animate-pulse' : 'bg-blue-600 dark:bg-amber-500 text-white dark:text-black'}`}
+              >
+                <Mic size={28} />
+              </button>
+            </div>
+
           </motion.div>
         ) : (
           <motion.div 

@@ -33,6 +33,8 @@ body {
   color: var(--text-color);
   transition: background-color 0.3s, color 0.3s;
   font-family: 'Inter', sans-serif;
+  overflow-x: hidden;
+  max-width: 100vw;
 }
 
 @theme {
