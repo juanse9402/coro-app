@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Papa from 'papaparse';
 import '@fontsource/jetbrains-mono/400.css';
 import '@fontsource/jetbrains-mono/700.css';
+import ChromaticTuner from './ChromaticTuner';
 
 const NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
@@ -43,6 +44,7 @@ export default function App() {
   const [setlist, setSetlist] = useState([]);
   const [showSetlist, setShowSetlist] = useState(false);
   const [draggedIdx, setDraggedIdx] = useState(null);
+  const [isTunerOpen, setIsTunerOpen] = useState(false);
 
   useEffect(() => {
     // 1. Carga Local Rápida (Offline-first)
@@ -385,12 +387,20 @@ export default function App() {
 
       {!fullScreen && (
         <div className="w-full max-w-4xl flex justify-between items-center mb-6">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 md:gap-4">
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Coro Pro-Web</h1>
-            {syncStatus === 'synced' && <div className="flex items-center gap-1 text-xs font-bold text-green-500 bg-green-500/10 px-2 py-1 rounded-full" title="Sincronizado con la nube"><CloudCheck size={14} /> Sync</div>}
-            {syncStatus === 'offline' && <div className="flex items-center gap-1 text-xs font-bold text-gray-400 bg-gray-500/10 px-2 py-1 rounded-full" title="Modo Offline"><CloudOff size={14} /> Local</div>}
+            {syncStatus === 'synced' && <div className="hidden sm:flex items-center gap-1 text-xs font-bold text-green-500 bg-green-500/10 px-2 py-1 rounded-full" title="Sincronizado con la nube"><CloudCheck size={14} /> Sync</div>}
+            {syncStatus === 'offline' && <div className="hidden sm:flex items-center gap-1 text-xs font-bold text-gray-400 bg-gray-500/10 px-2 py-1 rounded-full" title="Modo Offline"><CloudOff size={14} /> Local</div>}
+            
+            <button onClick={() => setIsTunerOpen(true)} className="md:hidden flex items-center justify-center min-w-[36px] min-h-[36px] rounded-full bg-blue-500/10 text-blue-500 dark:bg-amber-500/10 dark:text-amber-500" title="Afinador">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22v-9"/><path d="M8 13V6a4 4 0 0 1 8 0v7"/></svg>
+            </button>
           </div>
           <div className="hidden md:flex gap-2 bg-gray-100/10 p-1 rounded-full backdrop-blur-md shadow-sm border border-gray-200/20">
+            <button onClick={() => setIsTunerOpen(true)} className={`min-w-[44px] min-h-[44px] flex justify-center items-center rounded-full transition-all text-blue-500 dark:text-amber-500 hover:bg-black/5 dark:hover:bg-white/5`} title="Afinador">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22v-9"/><path d="M8 13V6a4 4 0 0 1 8 0v7"/></svg>
+            </button>
+            <div className="w-px h-6 bg-gray-300 dark:bg-gray-700 self-center mx-1"></div>
             <button onClick={() => setTheme('sun')} className={`min-w-[44px] min-h-[44px] flex justify-center items-center rounded-full transition-all ${theme === 'sun' ? 'bg-white shadow-md text-black' : 'text-gray-500'}`}><Sun size={18} /></button>
             <button onClick={() => setTheme('stage')} className={`min-w-[44px] min-h-[44px] flex justify-center items-center rounded-full transition-all ${theme === 'stage' ? 'bg-black shadow-md text-amber-500 border border-amber-500/30' : 'text-gray-500'}`}><Moon size={18} /></button>
             <button onClick={() => setTheme('standard')} className={`min-w-[44px] min-h-[44px] flex justify-center items-center rounded-full transition-all ${theme === 'standard' ? 'bg-blue-500 shadow-md text-white' : 'text-gray-500'}`}><Monitor size={18} /></button>
@@ -411,10 +421,11 @@ export default function App() {
               <input type="text" className="w-full pl-12 pr-4 py-4 rounded-2xl border-2 bg-transparent transition-all outline-none text-lg font-medium" style={{ borderColor: theme === 'stage' ? '#333' : '#e5e7eb' }} placeholder="Busca por ID o título..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 max-w-[600px] mx-auto w-[calc(100%-2rem)]">
-              <InstrumentCard active={instrument === 'guitar'} onClick={() => setInstrument('guitar')} icon={<Guitar />} title="Guitarra/Piano" theme={theme} />
-              <InstrumentCard active={instrument === 'sax-alto'} onClick={() => setInstrument('sax-alto')} icon={<Music />} title="Saxo Alto (Eb)" theme={theme} />
-              <InstrumentCard active={instrument === 'sax-tenor'} onClick={() => setInstrument('sax-tenor')} icon={<Music />} title="Saxo Tenor (Bb)" theme={theme} />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 max-w-[600px] md:max-w-4xl mx-auto w-[calc(100%-2rem)]">
+              <InstrumentCard active={instrument === 'guitar'} onClick={() => setInstrument('guitar')} icon={<Guitar />} title="Piano/Guit" theme={theme} />
+              <InstrumentCard active={instrument === 'violin'} onClick={() => setInstrument('violin')} icon={<Music />} title="Violín" theme={theme} />
+              <InstrumentCard active={instrument === 'sax-alto'} onClick={() => setInstrument('sax-alto')} icon={<Music />} title="Saxo (Eb)" theme={theme} />
+              <InstrumentCard active={instrument === 'sax-tenor'} onClick={() => setInstrument('sax-tenor')} icon={<Music />} title="Saxo (Bb)" theme={theme} />
             </div>
 
             <div className="w-[calc(100%-2rem)] max-w-[600px] mx-auto space-y-3 pb-24">
@@ -526,8 +537,9 @@ export default function App() {
                         className="text-base px-3 py-2 min-h-[44px] bg-blue-500/10 text-blue-500 dark:bg-amber-500/10 dark:text-amber-500 border border-blue-500/20 dark:border-amber-500/20 rounded-xl outline-none cursor-pointer"
                       >
                         <option value="guitar">Piano/Guitarra</option>
-                        <option value="sax-alto">Saxo Alto</option>
-                        <option value="sax-tenor">Saxo Tenor</option>
+                        <option value="violin">Violín</option>
+                        <option value="sax-alto">Saxo Alto (Eb)</option>
+                        <option value="sax-tenor">Saxo Tenor (Bb)</option>
                       </select>
                     )}
                   </h2>
@@ -661,6 +673,14 @@ export default function App() {
           <Mic size={32} className={isListening ? "animate-pulse" : ""} />
         </button>
       )}
+
+      {/* Chromatic Tuner Component */}
+      <ChromaticTuner 
+        isOpen={isTunerOpen} 
+        onClose={() => setIsTunerOpen(false)} 
+        instrument={instrument} 
+        theme={theme} 
+      />
     </div>
   );
 }
