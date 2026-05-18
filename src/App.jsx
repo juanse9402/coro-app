@@ -391,10 +391,6 @@ export default function App() {
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Coro Pro-Web</h1>
             {syncStatus === 'synced' && <div className="hidden sm:flex items-center gap-1 text-xs font-bold text-green-500 bg-green-500/10 px-2 py-1 rounded-full" title="Sincronizado con la nube"><CloudCheck size={14} /> Sync</div>}
             {syncStatus === 'offline' && <div className="hidden sm:flex items-center gap-1 text-xs font-bold text-gray-400 bg-gray-500/10 px-2 py-1 rounded-full" title="Modo Offline"><CloudOff size={14} /> Local</div>}
-            
-            <button onClick={() => setIsTunerOpen(true)} className="md:hidden flex items-center justify-center min-w-[36px] min-h-[36px] rounded-full bg-blue-500/10 text-blue-500 dark:bg-amber-500/10 dark:text-amber-500" title="Afinador">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22v-9"/><path d="M8 13V6a4 4 0 0 1 8 0v7"/></svg>
-            </button>
           </div>
           <div className="hidden md:flex gap-2 bg-gray-100/10 p-1 rounded-full backdrop-blur-md shadow-sm border border-gray-200/20">
             <button onClick={() => setIsTunerOpen(true)} className={`min-w-[44px] min-h-[44px] flex justify-center items-center rounded-full transition-all text-blue-500 dark:text-amber-500 hover:bg-black/5 dark:hover:bg-white/5`} title="Afinador">
@@ -416,19 +412,19 @@ export default function App() {
             className="w-full max-w-4xl p-0 md:p-8 md:rounded-3xl md:shadow-2xl md:backdrop-blur-xl md:border relative"
             style={{ backgroundColor: window.innerWidth >= 768 ? (theme === 'stage' ? '#111' : theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.9)') : 'transparent', borderColor: theme === 'stage' ? '#333' : '#eee' }}
           >
-            <div className="relative w-full max-w-[600px] mx-auto mb-8 px-4 md:px-0">
+            <div className="relative w-full max-w-[600px] mx-auto mb-12 px-4 md:px-0">
               <div className="absolute inset-y-0 left-8 md:left-4 flex items-center pointer-events-none"><Search className="text-gray-400" size={20} /></div>
               <input type="text" className="w-full pl-12 pr-4 py-4 rounded-2xl border-2 bg-transparent transition-all outline-none text-lg font-medium" style={{ borderColor: theme === 'stage' ? '#333' : '#e5e7eb' }} placeholder="Busca por ID o título..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 max-w-[600px] md:max-w-4xl mx-auto w-[calc(100%-2rem)]">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 mt-2 max-w-[600px] md:max-w-4xl mx-auto w-[calc(100%-2rem)]">
               <InstrumentCard active={instrument === 'guitar'} onClick={() => setInstrument('guitar')} icon={<Guitar />} title="Piano/Guit" theme={theme} />
               <InstrumentCard active={instrument === 'violin'} onClick={() => setInstrument('violin')} icon={<Music />} title="Violín" theme={theme} />
               <InstrumentCard active={instrument === 'sax-alto'} onClick={() => setInstrument('sax-alto')} icon={<Music />} title="Saxo (Eb)" theme={theme} />
               <InstrumentCard active={instrument === 'sax-tenor'} onClick={() => setInstrument('sax-tenor')} icon={<Music />} title="Saxo (Bb)" theme={theme} />
             </div>
 
-            <div className="w-[calc(100%-2rem)] max-w-[600px] mx-auto space-y-3 pb-24">
+            <div className="w-[calc(100%-2rem)] max-w-[600px] mx-auto space-y-3 pb-40">
               {displaySongs.map(song => {
                 const inSetlist = setlist.some(s => s.id === song.id);
                 return (
@@ -469,25 +465,7 @@ export default function App() {
               {searchQuery.trim().length > 0 && displaySongs.length >= 20 && <p className="text-center opacity-50 text-sm mt-4 font-mono">Mostrando 20 resultados principales. Escribe más para filtrar.</p>}
             </div>
 
-            {/* Floating Action Buttons */}
-            <div className="fixed bottom-[20px] left-0 right-0 pointer-events-none flex justify-between px-[20px] z-50">
-              {/* Setlist FAB (Left) */}
-              <button 
-                onClick={() => setShowSetlist(true)}
-                className="pointer-events-auto bg-amber-500 text-black min-w-[56px] min-h-[56px] rounded-full shadow-2xl hover:scale-110 transition-transform flex justify-center items-center gap-2 px-4"
-              >
-                <ListOrdered size={24} />
-                {setlist.length > 0 && <span className="font-bold bg-white text-black px-2 rounded-full text-sm">{setlist.length}</span>}
-              </button>
-
-              {/* Voice AI FAB (Right) */}
-              <button 
-                onClick={toggleVoiceSearch}
-                className={`pointer-events-auto min-w-[64px] min-h-[64px] rounded-full shadow-2xl hover:scale-110 transition-all flex justify-center items-center ${isListening ? 'bg-red-500 text-white animate-pulse' : 'bg-blue-600 dark:bg-amber-500 text-white dark:text-black'}`}
-              >
-                <Mic size={28} />
-              </button>
-            </div>
+            {/* Floating Action Buttons Removed */}
 
           </motion.div>
         ) : (
@@ -662,16 +640,50 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* AI Listener FAB */}
+      {/* Bottom Navigation Dock */}
       {!fullScreen && !showSetlist && (
-        <button 
-          onClick={toggleVoiceSearch}
-          className={`fixed bottom-8 right-8 p-5 md:p-6 rounded-full shadow-2xl flex items-center justify-center transition-all z-50 ${isListening ? 'bg-red-500 text-white animate-bounce scale-110 shadow-red-500/50' : 'bg-blue-600 text-white hover:bg-blue-500 hover:scale-105 shadow-blue-500/30 dark:bg-amber-500 dark:text-black dark:shadow-amber-500/20'}`}
-          style={{ width: '70px', height: '70px' }}
-          title="Asistente IA (Escuchar)"
-        >
-          <Mic size={32} className={isListening ? "animate-pulse" : ""} />
-        </button>
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 pointer-events-none w-full px-4 max-w-sm flex justify-center">
+          <div 
+            className="pointer-events-auto w-full flex items-center justify-between px-6 py-3 rounded-3xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] border border-white/20 backdrop-blur-xl"
+            style={{ 
+              backgroundColor: theme === 'stage' ? 'rgba(20,20,20,0.85)' : 'rgba(255,255,255,0.85)',
+              borderColor: theme === 'stage' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'
+            }}
+          >
+            {/* Left: Setlist */}
+            <button 
+              onClick={() => setShowSetlist(true)}
+              className="flex flex-col items-center gap-1 opacity-70 hover:opacity-100 transition-opacity relative"
+            >
+              <div className="relative">
+                <ListOrdered size={24} />
+                {setlist.length > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-amber-500 text-black text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
+                    {setlist.length}
+                  </span>
+                )}
+              </div>
+              <span className="text-[10px] font-medium">Setlist</span>
+            </button>
+
+            {/* Center: Voice AI (Highlight) */}
+            <button 
+              onClick={toggleVoiceSearch}
+              className={`relative -top-6 min-w-[64px] min-h-[64px] rounded-full shadow-lg flex justify-center items-center transition-all ${isListening ? 'bg-red-500 text-white animate-pulse shadow-red-500/40' : 'bg-blue-600 dark:bg-amber-500 text-white dark:text-black hover:scale-105'}`}
+            >
+              <Mic size={28} />
+            </button>
+
+            {/* Right: Tuner */}
+            <button 
+              onClick={() => setIsTunerOpen(true)}
+              className="flex flex-col items-center gap-1 opacity-70 hover:opacity-100 transition-opacity"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22v-9"/><path d="M8 13V6a4 4 0 0 1 8 0v7"/></svg>
+              <span className="text-[10px] font-medium">Afinador</span>
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Chromatic Tuner Component */}
