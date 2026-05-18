@@ -45,6 +45,13 @@ export default function App() {
   const [showSetlist, setShowSetlist] = useState(false);
   const [draggedIdx, setDraggedIdx] = useState(null);
   const [isTunerOpen, setIsTunerOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => setIsScrolled(window.scrollY > 50);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   useEffect(() => {
     // 1. Carga Local Rápida (Offline-first)
@@ -117,6 +124,7 @@ export default function App() {
       alert('Tu navegador no soporta búsqueda por voz.');
       return;
     }
+    if (navigator.vibrate) navigator.vibrate([50]);
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
     recognition.lang = 'es-ES';
@@ -500,15 +508,15 @@ export default function App() {
             
             <div 
               onClick={(e) => e.stopPropagation()} 
-              className={`flex flex-col gap-4 sticky z-50 rounded-2xl shadow-2xl backdrop-blur-3xl ${fullScreen ? 'bottom-4 md:top-2 md:bottom-auto p-4 -mx-2 opacity-30 hover:opacity-100 transition-opacity' : 'bottom-4 md:top-4 md:bottom-auto p-4 md:p-6 -mx-4 md:mx-0 mb-8 md:mb-12'}`} 
+              className={`flex flex-col sticky z-40 rounded-b-3xl md:rounded-2xl shadow-2xl backdrop-blur-3xl transition-all duration-300 ${fullScreen ? 'top-0 p-4 -mx-2 opacity-30 hover:opacity-100' : `top-0 -mx-4 md:mx-0 mb-8 md:mb-12 ${isScrolled ? 'p-3' : 'p-4 md:p-6'} gap-2 md:gap-4`}`} 
               style={{ backgroundColor: theme === 'stage' ? 'rgba(0,0,0,0.95)' : 'rgba(255,255,255,0.95)', borderColor: theme === 'stage' ? '#444' : '#eee', borderWidth: '1px' }}
             >
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 md:gap-4">
                 <div>
-                  <h2 className={`font-bold flex items-center gap-3 ${fullScreen ? 'text-xl' : 'text-3xl'}`}>
+                  <h2 className={`font-bold flex items-center gap-3 transition-all ${fullScreen ? 'text-xl' : isScrolled ? 'text-xl' : 'text-3xl'}`}>
                     <span className="text-amber-500 font-mono text-xl">{selectedSong.id}</span>
                     {selectedSong.title}
-                    {!fullScreen && (
+                    {!fullScreen && !isScrolled && (
                       <select 
                         value={instrument} 
                         onChange={(e) => setInstrument(e.target.value)}
@@ -521,8 +529,8 @@ export default function App() {
                       </select>
                     )}
                   </h2>
-                  {!fullScreen && (
-                    <div className="text-sm opacity-60 flex items-center gap-4 mt-2 font-mono">
+                  {!fullScreen && !isScrolled && (
+                    <div className="text-sm opacity-60 flex items-center gap-4 mt-2 font-mono transition-all">
                       <span>Tono: {selectedSong.tone}</span>
                       <span className="flex items-center gap-2">
                         <VisualMetronome bpm={selectedSong.bpm} isPlaying={scrollStatus !== 'idle'} />
@@ -533,43 +541,50 @@ export default function App() {
                 </div>
                 
                 <div className="flex flex-wrap items-center gap-2">
-                  <button onClick={() => setFullScreen(!fullScreen)} className="min-w-[44px] min-h-[44px] flex justify-center items-center rounded-xl bg-gray-500/10 hover:bg-gray-500/20 transition-all text-gray-500" title="Pantalla Completa">
-                    {fullScreen ? <Minimize size={20} /> : <Maximize size={20} />}
-                  </button>
+                  {!isScrolled && (
+                    <>
+                      <button onClick={() => setFullScreen(!fullScreen)} className="min-w-[44px] min-h-[44px] flex justify-center items-center rounded-xl bg-gray-500/10 hover:bg-gray-500/20 transition-all text-gray-500" title="Pantalla Completa">
+                        {fullScreen ? <Minimize size={20} /> : <Maximize size={20} />}
+                      </button>
 
-                  <div className="flex items-center gap-1 bg-gray-500/10 p-1 rounded-xl">
-                    <button onClick={() => setScrollMultiplier(m => Math.max(0.5, m - 0.1))} className="min-w-[44px] min-h-[44px] flex justify-center items-center rounded-lg hover:bg-gray-500/20"><Minus size={14}/></button>
-                    <span className="font-mono text-xs font-bold w-6 text-center" title="Multiplicador de Velocidad">{scrollMultiplier.toFixed(1)}x</span>
-                    <button onClick={() => setScrollMultiplier(m => Math.min(3.0, m + 0.1))} className="min-w-[44px] min-h-[44px] flex justify-center items-center rounded-lg hover:bg-gray-500/20"><Plus size={14}/></button>
-                  </div>
+                      <div className="flex items-center gap-1 bg-gray-500/10 p-1 rounded-xl">
+                        <button onClick={() => setScrollMultiplier(m => Math.max(0.5, m - 0.1))} className="min-w-[44px] min-h-[44px] flex justify-center items-center rounded-lg hover:bg-gray-500/20"><Minus size={14}/></button>
+                        <span className="font-mono text-xs font-bold w-6 text-center" title="Multiplicador de Velocidad">{scrollMultiplier.toFixed(1)}x</span>
+                        <button onClick={() => setScrollMultiplier(m => Math.min(3.0, m + 0.1))} className="min-w-[44px] min-h-[44px] flex justify-center items-center rounded-lg hover:bg-gray-500/20"><Plus size={14}/></button>
+                      </div>
 
-                  <button 
-                    onClick={() => {
-                      if (scrollStatus === 'idle') {
-                        setScrollStatus('preroll');
-                        setPrerollCount(4);
-                      } else {
-                        setScrollStatus('idle');
-                      }
-                    }} 
-                    className={`flex items-center justify-center gap-2 px-4 min-h-[44px] rounded-xl font-bold transition-all ${scrollStatus === 'scrolling' ? 'bg-red-500 text-white animate-pulse shadow-md shadow-red-500/20' : scrollStatus === 'preroll' ? 'bg-amber-500 text-black shadow-md shadow-amber-500/20' : 'bg-gray-200/20 text-gray-500 hover:bg-gray-200/40'}`}
-                  >
-                    {scrollStatus === 'scrolling' ? <Pause size={18} /> : scrollStatus === 'preroll' ? <Drum size={18} className="animate-bounce" /> : <ChevronDown size={18} />} 
-                    {!fullScreen && (scrollStatus === 'scrolling' ? 'Pausar' : scrollStatus === 'preroll' ? `Inicia en ${prerollCount}...` : 'Auto-Scroll')}
-                  </button>
+                      <button 
+                        onClick={() => {
+                          if (scrollStatus === 'idle') {
+                            setScrollStatus('preroll');
+                            setPrerollCount(4);
+                          } else {
+                            setScrollStatus('idle');
+                          }
+                        }} 
+                        className={`flex items-center justify-center gap-2 px-4 min-h-[44px] rounded-xl font-bold transition-all ${scrollStatus === 'scrolling' ? 'bg-red-500 text-white animate-pulse shadow-md shadow-red-500/20' : scrollStatus === 'preroll' ? 'bg-amber-500 text-black shadow-md shadow-amber-500/20' : 'bg-gray-200/20 text-gray-500 hover:bg-gray-200/40'}`}
+                      >
+                        {scrollStatus === 'scrolling' ? <Pause size={18} /> : scrollStatus === 'preroll' ? <Drum size={18} className="animate-bounce" /> : <ChevronDown size={18} />} 
+                        {!fullScreen && (scrollStatus === 'scrolling' ? 'Pausar' : scrollStatus === 'preroll' ? `Inicia en ${prerollCount}...` : 'Auto-Scroll')}
+                      </button>
+                    </>
+                  )}
                   
                   {!fullScreen && (
-                    <div className="flex items-center gap-1 bg-black/5 dark:bg-white/5 p-1 rounded-xl border border-black/10 dark:border-white/10">
-                      <button onClick={() => setTransposeSteps(s => s - 1)} className="min-w-[44px] min-h-[44px] flex justify-center items-center rounded-lg bg-black/10 dark:bg-white/10 hover:bg-black/20"><Minus size={16} /></button>
-                      <span className="font-mono font-bold w-12 text-center" title="Transpositor Base">{transposeSteps > 0 ? `+${transposeSteps}` : transposeSteps}</span>
-                      <button onClick={() => setTransposeSteps(s => s + 1)} className="min-w-[44px] min-h-[44px] flex justify-center items-center rounded-lg bg-black/10 dark:bg-white/10 hover:bg-black/20"><Plus size={16} /></button>
+                    <div className="flex flex-col items-center ml-auto md:ml-0">
+                      <span className="text-[10px] font-mono opacity-50 mb-0.5 leading-none">Tono</span>
+                      <div className="flex items-center gap-1 bg-black/5 dark:bg-white/5 p-1 rounded-xl border border-black/10 dark:border-white/10">
+                        <button onClick={() => setTransposeSteps(s => s - 1)} className="min-w-[36px] min-h-[36px] md:min-w-[44px] md:min-h-[44px] flex justify-center items-center rounded-lg bg-black/10 dark:bg-white/10 hover:bg-black/20"><Minus size={16} /></button>
+                        <span className="font-mono font-bold w-8 md:w-12 text-center" title="Transpositor Base">{transposeSteps > 0 ? `+${transposeSteps}` : transposeSteps}</span>
+                        <button onClick={() => setTransposeSteps(s => s + 1)} className="min-w-[36px] min-h-[36px] md:min-w-[44px] md:min-h-[44px] flex justify-center items-center rounded-lg bg-black/10 dark:bg-white/10 hover:bg-black/20"><Plus size={16} /></button>
+                      </div>
                     </div>
                   )}
                 </div>
               </div>
             </div>
 
-            <div className="leading-relaxed pt-6 px-2 md:px-6">
+            <div className="leading-relaxed pt-6 px-2 md:px-6 pb-[120px]">
               {renderChordPro(selectedSong.content)}
             </div>
 
@@ -644,9 +659,9 @@ export default function App() {
       {!fullScreen && !showSetlist && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 pointer-events-none w-full px-4 max-w-sm flex justify-center">
           <div 
-            className="pointer-events-auto w-full flex items-center justify-between px-6 py-3 rounded-3xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] border border-white/20 backdrop-blur-xl"
+            className="pointer-events-auto w-full flex items-center justify-between px-6 py-3 rounded-3xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] border border-white/20 backdrop-blur-3xl"
             style={{ 
-              backgroundColor: theme === 'stage' ? 'rgba(20,20,20,0.85)' : 'rgba(255,255,255,0.85)',
+              backgroundColor: theme === 'stage' ? 'rgba(20,20,20,0.75)' : 'rgba(255,255,255,0.75)',
               borderColor: theme === 'stage' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'
             }}
           >
