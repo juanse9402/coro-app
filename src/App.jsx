@@ -434,13 +434,17 @@ export default function App() {
 
             <div className="w-[calc(100%-2rem)] max-w-[600px] mx-auto space-y-3 pb-40">
               {displaySongs.map(song => {
-                const inSetlist = setlist.some(s => s.id === song.id);
+                const setlistIndex = setlist.findIndex(s => s.id === song.id);
+                const inSetlist = setlistIndex !== -1;
                 return (
-                  <div key={song.id} onClick={() => { setSelectedSong(song); setTransposeSteps(0); setScrollStatus('idle'); setScrollMultiplier(1.0); }} className="flex items-center justify-between p-4 rounded-2xl border cursor-pointer hover:scale-[1.01] transition-transform group" style={{ borderColor: theme === 'stage' ? '#222' : '#f3f4f6', backgroundColor: theme === 'stage' ? '#0a0a0a' : '#ffffff' }}>
+                  <div key={song.id} onClick={() => { setSelectedSong(song); setTransposeSteps(0); setScrollStatus('idle'); setScrollMultiplier(1.0); }} className={`flex items-center justify-between p-4 rounded-2xl border cursor-pointer hover:scale-[1.01] transition-all group ${inSetlist ? 'shadow-[0_0_15px_rgba(245,158,11,0.1)]' : ''}`} style={{ borderColor: inSetlist ? (theme === 'stage' ? 'rgba(245,158,11,0.5)' : 'rgba(59,130,246,0.5)') : (theme === 'stage' ? '#222' : '#f3f4f6'), backgroundColor: theme === 'stage' ? '#0a0a0a' : '#ffffff' }}>
                     <div className="flex items-center gap-4">
                       <span className="font-mono font-bold text-gray-400 text-sm">{song.id}</span>
                       <div>
-                        <h3 className="font-bold text-lg">{song.title}</h3>
+                        <h3 className="font-bold text-lg flex items-center gap-2">
+                          {song.title}
+                          {inSetlist && <span className="bg-blue-500 dark:bg-amber-500 text-white dark:text-black text-[10px] px-1.5 py-0.5 rounded-full font-mono">{setlistIndex + 1}</span>}
+                        </h3>
                         <div className="flex gap-2 mt-1">
                           <span className="text-xs bg-gray-500/10 px-2 py-0.5 rounded-md opacity-70">{song.category}</span>
                         </div>
@@ -458,12 +462,16 @@ export default function App() {
                       <button 
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (!inSetlist) setSetlist([...setlist, song]);
+                          if (inSetlist) {
+                            setSetlist(setlist.filter(s => s.id !== song.id));
+                          } else {
+                            setSetlist([...setlist, song]);
+                          }
                         }}
-                        className={`min-w-[44px] min-h-[44px] flex justify-center items-center p-2 rounded-xl border transition-all ${inSetlist ? 'bg-green-500/20 text-green-500 border-green-500/30' : 'bg-gray-100 dark:bg-[#222] text-gray-400 border-transparent hover:border-gray-300 dark:hover:border-gray-500'}`}
-                        title={inSetlist ? "En el Setlist" : "Añadir al Setlist"}
+                        className={`min-w-[44px] min-h-[44px] flex justify-center items-center p-2 rounded-xl border transition-all active:scale-90 ${inSetlist ? 'bg-red-500/10 text-red-500 border-red-500/30 hover:bg-red-500/20' : 'bg-gray-100 dark:bg-[#222] text-gray-400 border-transparent hover:border-gray-300 dark:hover:border-gray-500'}`}
+                        title={inSetlist ? "Quitar del Setlist" : "Añadir al Setlist"}
                       >
-                        {inSetlist ? <ListOrdered size={20} /> : <ListPlus size={20} />}
+                        {inSetlist ? <X size={20} /> : <ListPlus size={20} />}
                       </button>
                     </div>
                   </div>
@@ -513,14 +521,16 @@ export default function App() {
             >
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 md:gap-4">
                 <div>
-                  <h2 className={`font-bold flex items-center gap-3 transition-all ${fullScreen ? 'text-xl' : isScrolled ? 'text-xl' : 'text-3xl'}`}>
-                    <span className="text-amber-500 font-mono text-xl">{selectedSong.id}</span>
-                    {selectedSong.title}
+                  <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3 transition-all mb-2 md:mb-0">
+                    <h2 className={`font-bold flex items-start md:items-center gap-2 md:gap-3 flex-wrap ${fullScreen ? 'text-xl' : isScrolled ? 'text-xl' : 'text-2xl md:text-3xl'}`}>
+                      <span className="text-amber-500 font-mono text-xl md:text-2xl mt-1 md:mt-0">{selectedSong.id}</span>
+                      <span className="text-wrap leading-tight">{selectedSong.title}</span>
+                    </h2>
                     {!fullScreen && !isScrolled && (
                       <select 
                         value={instrument} 
                         onChange={(e) => setInstrument(e.target.value)}
-                        className="text-base px-3 py-2 min-h-[44px] bg-blue-500/10 text-blue-500 dark:bg-amber-500/10 dark:text-amber-500 border border-blue-500/20 dark:border-amber-500/20 rounded-xl outline-none cursor-pointer"
+                        className="text-sm md:text-base px-3 py-1.5 md:py-2 min-h-[36px] md:min-h-[44px] bg-blue-500/10 text-blue-500 dark:bg-amber-500/10 dark:text-amber-500 border border-blue-500/20 dark:border-amber-500/20 rounded-xl outline-none cursor-pointer w-fit"
                       >
                         <option value="guitar">Piano/Guitarra</option>
                         <option value="violin">Violín</option>
@@ -528,7 +538,7 @@ export default function App() {
                         <option value="sax-tenor">Saxo Tenor (Bb)</option>
                       </select>
                     )}
-                  </h2>
+                  </div>
                   {!fullScreen && !isScrolled && (
                     <div className="text-sm opacity-60 flex items-center gap-4 mt-2 font-mono transition-all">
                       <span>Tono: {selectedSong.tone}</span>
