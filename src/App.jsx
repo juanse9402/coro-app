@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Mic, Sun, Moon, Monitor, Music, Guitar, Drum, ArrowLeft, Plus, Minus, Play, Pause, ChevronDown, Maximize, Minimize, ListPlus, ListOrdered, X, GripVertical, ChevronLeft, ChevronRight, CloudOff, CloudCheck } from 'lucide-react';
+import { Search, Mic, Sun, Moon, Monitor, Music, Guitar, Drum, ArrowLeft, Plus, Minus, Play, Pause, ChevronDown, Maximize, Minimize, ListPlus, ListOrdered, X, GripVertical, ChevronLeft, ChevronRight, CloudOff, CloudCheck, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Papa from 'papaparse';
 import '@fontsource/jetbrains-mono/400.css';
@@ -25,7 +25,7 @@ function transposeChord(chord, steps) {
   return `${NOTES[newIndex]}${mod}`;
 }
 
-export default function App() {
+export default function App({ pwaUpdateAvailable = false, onPwaUpdate = null }) {
   const [theme, setTheme] = useState('stage');
   const [instrument, setInstrument] = useState('guitar'); 
   const [searchQuery, setSearchQuery] = useState('');
@@ -39,6 +39,11 @@ export default function App() {
   const [fullScreen, setFullScreen] = useState(false);
   const [aiToast, setAiToast] = useState('');
   const [syncStatus, setSyncStatus] = useState('loading'); // loading, synced, offline
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncProgress, setSyncProgress] = useState(0);
+  const [newSongsAvailable, setNewSongsAvailable] = useState(false);
+  const [pendingSongsData, setPendingSongsData] = useState(null);
+  const [displaySongs, setDisplaySongs] = useState([]);
 
   // Setlist states
   const [setlist, setSetlist] = useState([]);
@@ -47,50 +52,179 @@ export default function App() {
   const [isTunerOpen, setIsTunerOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
+  // Worker refs
+  const workerRef = useRef(null);
+  const searchRequestId = useRef(0);
+
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 50);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // ── CORS-safe fetch helper (cache-busted, no PapaParse XHR) ────────────
+  const fetchFromSheet = async () => {
+    const base =
+      import.meta.env.VITE_GOOGLE_SHEETS_CSV_URL ||
+      'https://docs.google.com/spreadsheets/d/1RmJvERvRZjH-TKOquyOBwyMmWsZ8PqKdxDIhc7Ov_vk/export?format=csv&gid=0';
+    // Append timestamp to bypass CDN / browser cache every time
+    const url = `${base}&t=${Date.now()}`;
+    const res = await fetch(url, {
+      method: 'GET',
+      mode: 'cors',
+      cache: 'no-store',
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    return new Promise((resolve, reject) => {
+      Papa.parse(text, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => {
+          const parsed = results.data
+            .filter(r => r['Título'])
+            .map(row => ({
+              id: row['ID'],
+              title: row['Título'],
+              tone: row['Tono'],
+              bpm: parseInt(row['BPM']) || 100,
+              category: row['Categoría'],
+              content: row['Contenido (Letra y Acordes para IA)'] || '',
+            }));
+          resolve(parsed);
+        },
+        error: reject,
+      });
+    });
+  };
+
+  // ── Stale-While-Revalidate boot ─────────────────────────────────────────
+  // Lightweight hash: XOR of char codes on id+first 20 chars of content
+  const computeEtag = (songs) =>
+    songs.reduce((acc, s) => {
+      const str = (s.id || '') + (s.content || '').slice(0, 20);
+      for (let i = 0; i < str.length; i++) acc ^= str.charCodeAt(i) * (i + 1);
+      return acc;
+    }, songs.length).toString(36);
+
+  const revalidate = async (cachedSongs) => {
+    try {
+      const fresh = await fetchFromSheet();
+      const freshEtag = computeEtag(fresh);
+      const localEtag = localStorage.getItem('coro_songs_etag') || '';
+
+      if (freshEtag !== localEtag && cachedSongs.length > 0) {
+        // Data changed — notify instead of silently replacing
+        setPendingSongsData(fresh);
+        setNewSongsAvailable(true);
+      } else if (cachedSongs.length === 0) {
+        // First load: apply immediately
+        setSongs(fresh);
+        localStorage.setItem('coro_songs', JSON.stringify(fresh));
+        localStorage.setItem('coro_songs_etag', freshEtag);
+      }
+      setSyncStatus('synced');
+    } catch {
+      setSyncStatus(cachedSongs.length > 0 ? 'offline' : 'error');
+    }
+  };
+
   useEffect(() => {
-    // 1. Carga Local Rápida (Offline-first)
-    const localData = localStorage.getItem('coro_songs');
-    if (localData) {
+    // 1. STALE: show cached data instantly
+    const localRaw = localStorage.getItem('coro_songs');
+    let cachedSongs = [];
+    if (localRaw) {
       try {
-        setSongs(JSON.parse(localData));
+        cachedSongs = JSON.parse(localRaw);
+        setSongs(cachedSongs);
         setSyncStatus('offline');
       } catch (e) {
-        console.error("Local data corrupted", e);
+        console.error('Local data corrupted', e);
       }
     }
 
-    // 2. Fetch remoto para sincronizar en background
-    const sheetUrl = import.meta.env.VITE_GOOGLE_SHEETS_CSV_URL || 'https://docs.google.com/spreadsheets/d/1RmJvERvRZjH-TKOquyOBwyMmWsZ8PqKdxDIhc7Ov_vk/export?format=csv';
-    Papa.parse(sheetUrl, {
-      download: true,
-      header: true,
-      complete: (results) => {
-        const parsedSongs = results.data
-          .filter(r => r.Título)
-          .map(row => ({
-            id: row.ID,
-            title: row.Título,
-            tone: row.Tono,
-            bpm: parseInt(row.BPM) || 100,
-            category: row.Categoría,
-            content: row['Contenido (Letra y Acordes para IA)'] || ''
-          }));
-        setSongs(parsedSongs);
-        localStorage.setItem('coro_songs', JSON.stringify(parsedSongs));
-        setSyncStatus('synced');
-      },
-      error: () => {
-        if (localData) setSyncStatus('offline');
-        else setSyncStatus('error');
-      }
-    });
+    // 2. REVALIDATE on boot
+    revalidate(cachedSongs);
+
+    // 3. Periodic revalidation every 5 minutes while app is open
+    const interval = setInterval(() => {
+      const raw = localStorage.getItem('coro_songs');
+      const current = raw ? JSON.parse(raw) : [];
+      revalidate(current);
+    }, 5 * 60 * 1000);
+
+    return () => clearInterval(interval);
   }, []);
+
+  // ── Worker initialisation ────────────────────────────────────────────────
+  useEffect(() => {
+    if (typeof Worker === 'undefined') return;
+    const worker = new Worker('/searchWorker.js');
+    workerRef.current = worker;
+    worker.onmessage = (e) => {
+      const { results, requestId } = e.data;
+      // Discard stale responses from previous searches
+      if (requestId === searchRequestId.current) {
+        setDisplaySongs(results);
+      }
+    };
+    return () => worker.terminate();
+  }, []);
+
+  // ── Dispatch search to Worker on query/songs change ──────────────────────
+  useEffect(() => {
+    const id = ++searchRequestId.current;
+    if (workerRef.current) {
+      workerRef.current.postMessage({ songs, query: searchQuery, requestId: id });
+    } else {
+      // Sync fallback (no Worker support)
+      if (!searchQuery.trim()) {
+        setDisplaySongs(songs.slice(0, 20));
+      } else {
+        setDisplaySongs(songs.slice(0, 20));
+      }
+    }
+  }, [songs, searchQuery]);
+
+  const handleManualSync = () => {
+    if (isSyncing) return;
+    setIsSyncing(true);
+    setSyncProgress(0);
+    setSyncStatus('loading');
+    setNewSongsAvailable(false);
+    setPendingSongsData(null);
+
+    // Animate progress bar to ~60% while fetching
+    let prog = 0;
+    const fakeProgress = setInterval(() => {
+      prog += Math.random() * 8;
+      if (prog >= 60) { clearInterval(fakeProgress); prog = 60; }
+      setSyncProgress(Math.min(prog, 60));
+    }, 150);
+
+    localStorage.removeItem('coro_songs');
+    localStorage.removeItem('coro_songs_etag');
+    setSongs([]);
+
+    fetchFromSheet()
+      .then(fresh => {
+        clearInterval(fakeProgress);
+        setSyncProgress(85);
+        const etag = computeEtag(fresh);
+        setSongs(fresh);
+        localStorage.setItem('coro_songs', JSON.stringify(fresh));
+        localStorage.setItem('coro_songs_etag', etag);
+        setSyncStatus('synced');
+        setTimeout(() => setSyncProgress(100), 200);
+        setTimeout(() => { setIsSyncing(false); setSyncProgress(0); }, 1000);
+      })
+      .catch(() => {
+        clearInterval(fakeProgress);
+        setSyncStatus('offline');
+        setSyncProgress(100);
+        setTimeout(() => { setIsSyncing(false); setSyncProgress(0); }, 800);
+      });
+  };
 
   useEffect(() => {
     document.body.className = theme === 'standard' ? '' : `theme-${theme}`;
@@ -269,109 +403,7 @@ export default function App() {
     });
   };
 
-  const getLevenshteinDistance = (a, b) => {
-    if (a.length === 0) return b.length;
-    if (b.length === 0) return a.length;
-    let prevRow = Array.from({length: a.length + 1}, (_, i) => i);
-    for (let j = 1; j <= b.length; j++) {
-      const currRow = [j];
-      for (let i = 1; i <= a.length; i++) {
-        currRow[i] = Math.min(
-          currRow[i - 1] + 1,
-          prevRow[i] + 1,
-          prevRow[i - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)
-        );
-      }
-      prevRow = currRow;
-    }
-    return prevRow[a.length];
-  };
-
-  const safeSearch = searchQuery.trim();
-  let displaySongs = [];
-
-  if (!safeSearch) {
-    displaySongs = songs.slice(0, 20);
-  } else {
-    const qLower = safeSearch.toLowerCase();
-    const qNoSpace = qLower.replace(/\s+/g, '');
-
-    const processed = songs.map(song => {
-      let score = 0;
-      let snippet = null;
-
-      // 1. ID Match
-      if (song.id) {
-        const idLower = song.id.toLowerCase();
-        if (idLower === qNoSpace) score += 100;
-        else if (idLower.includes(qNoSpace)) score += 80;
-      }
-
-      // 2. Title Match
-      const titleLower = song.title.toLowerCase();
-      if (titleLower.includes(qLower)) score += 50;
-      else {
-        const titleWords = titleLower.split(/\s+/);
-        const queryWords = qLower.split(/\s+/);
-        let titleFuzzyMatch = false;
-        queryWords.forEach(qw => {
-          if (qw.length > 3) {
-            titleWords.forEach(tw => {
-              if (Math.abs(tw.length - qw.length) <= 2 && getLevenshteinDistance(tw, qw) <= 1) {
-                titleFuzzyMatch = true;
-              }
-            });
-          }
-        });
-        if (titleFuzzyMatch) score += 30;
-      }
-
-      // 3. Content Match
-      const cleanContent = song.content ? song.content.replace(/\[.*?\]/g, '') : '';
-      if (score < 50) {
-        const lines = cleanContent.split('\n').filter(l => l.trim().length > 0);
-        let matchedLine = -1;
-        
-        matchedLine = lines.findIndex(l => l.toLowerCase().includes(qLower));
-        
-        if (matchedLine === -1 && qLower.length > 3) {
-          const queryWords = qLower.split(/\s+/);
-          for (let i = 0; i < lines.length; i++) {
-             const lineWords = lines[i].toLowerCase().split(/\s+/);
-             let foundTypo = false;
-             for (let qw of queryWords) {
-                if (qw.length > 3) {
-                   for (let lw of lineWords) {
-                      if (Math.abs(lw.length - qw.length) <= 2 && getLevenshteinDistance(lw, qw) <= 1) {
-                         foundTypo = true;
-                         break;
-                      }
-                   }
-                }
-                if (foundTypo) break;
-             }
-             if (foundTypo) {
-               matchedLine = i;
-               break;
-             }
-          }
-        }
-
-        if (matchedLine !== -1) {
-          score += 10;
-          let excerpt = lines[matchedLine].trim();
-          snippet = `"...${excerpt}..."`;
-        }
-      }
-
-      return { ...song, score, snippet };
-    });
-
-    displaySongs = processed
-      .filter(s => s.score > 0)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 20);
-  }
+  // displaySongs is now driven by the Web Worker via state (see useEffect above)
 
   const currentSetlistIdx = selectedSong ? setlist.findIndex(s => s.id === selectedSong.id) : -1;
   const hasNextSetlist = currentSetlistIdx !== -1 && currentSetlistIdx < setlist.length - 1;
@@ -379,6 +411,128 @@ export default function App() {
 
   return (
     <div className={`min-h-screen flex flex-col items-center transition-all duration-300 pb-40 ${fullScreen ? 'p-2' : 'py-6 px-4'}`}>
+
+      {/* ── PWA Update Banner (new APP version) ── */}
+      <AnimatePresence>
+        {pwaUpdateAvailable && (
+          <motion.div
+            initial={{ opacity: 0, y: 60 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 60 }}
+            className="fixed bottom-28 left-1/2 -translate-x-1/2 z-[195] pointer-events-auto w-full max-w-sm px-4"
+          >
+            <div
+              className="w-full flex items-center justify-between gap-3 px-5 py-3.5 rounded-2xl shadow-2xl backdrop-blur-xl border"
+              style={{
+                background: 'rgba(15,15,15,0.92)',
+                borderColor: 'rgba(250,204,21,0.4)',
+                color: '#fff'
+              }}
+            >
+              <div className="flex items-center gap-2 flex-1">
+                <span className="text-amber-400 text-lg">⚡</span>
+                <span className="text-sm font-semibold">Nueva versión disponible</span>
+              </div>
+              <button
+                onClick={() => onPwaUpdate?.()}
+                className="shrink-0 bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs px-3 py-1.5 rounded-xl transition-all hover:scale-105 active:scale-95"
+              >
+                Actualizar
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── New Songs Available Banner ── */}
+      <AnimatePresence>
+        {newSongsAvailable && (
+          <motion.div
+            initial={{ opacity: 0, y: -60 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -60 }}
+            className="fixed top-4 left-1/2 -translate-x-1/2 z-[190] pointer-events-auto w-full max-w-sm px-4"
+          >
+            <button
+              onClick={() => {
+                setSongs(pendingSongsData);
+                localStorage.setItem('coro_songs', JSON.stringify(pendingSongsData));
+                setPendingSongsData(null);
+                setNewSongsAvailable(false);
+              }}
+              className="w-full flex items-center justify-center gap-3 px-5 py-3.5 rounded-2xl font-bold text-sm shadow-2xl backdrop-blur-xl border border-white/20 transition-all hover:scale-[1.02] active:scale-95"
+              style={{
+                background: 'linear-gradient(135deg, #1d4ed8, #7c3aed)',
+                color: '#fff',
+                boxShadow: '0 8px 32px rgba(124,58,237,0.4)'
+              }}
+            >
+              <span className="text-lg">🎵</span>
+              <span>¡Nuevas canciones disponibles! Toca aquí para actualizar</span>
+              <motion.div
+                animate={{ x: [0, 4, 0] }}
+                transition={{ repeat: Infinity, duration: 1.2 }}
+              >
+                <RefreshCw size={16} />
+              </motion.div>
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Sync Progress Bar ── */}
+      <AnimatePresence>
+        {isSyncing && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] pointer-events-none flex flex-col"
+          >
+            {/* Top progress bar */}
+            <div className="w-full h-1 bg-gray-200/20">
+              <motion.div
+                className="h-full rounded-full"
+                style={{
+                  background: 'linear-gradient(90deg, #3b82f6, #06b6d4, #8b5cf6)',
+                  boxShadow: '0 0 12px rgba(59,130,246,0.7)'
+                }}
+                animate={{ width: `${syncProgress}%` }}
+                transition={{ duration: 0.3, ease: 'easeOut' }}
+              />
+            </div>
+            {/* Overlay card */}
+            <div className="flex-1 flex items-center justify-center">
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="pointer-events-auto bg-white/10 dark:bg-black/60 backdrop-blur-2xl border border-white/20 rounded-3xl p-8 shadow-2xl flex flex-col items-center gap-5 min-w-[260px]"
+              >
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ repeat: Infinity, duration: 1.2, ease: 'linear' }}
+                >
+                  <RefreshCw size={36} className="text-blue-400 dark:text-amber-400" />
+                </motion.div>
+                <div className="text-center">
+                  <p className="font-bold text-lg">Sincronizando...</p>
+                  <p className="text-sm opacity-60 mt-1">Descargando canciones actualizadas</p>
+                </div>
+                {/* Mini progress bar inside card */}
+                <div className="w-full h-2 bg-gray-200/20 rounded-full overflow-hidden">
+                  <motion.div
+                    className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-400"
+                    animate={{ width: `${syncProgress}%` }}
+                    transition={{ duration: 0.3, ease: 'easeOut' }}
+                  />
+                </div>
+                <span className="font-mono text-sm opacity-70">{Math.round(syncProgress)}%</span>
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <AnimatePresence>
         {aiToast && (
           <motion.div 
@@ -408,6 +562,25 @@ export default function App() {
             <button onClick={() => setTheme('sun')} className={`min-w-[44px] min-h-[44px] flex justify-center items-center rounded-full transition-all ${theme === 'sun' ? 'bg-white shadow-md text-black' : 'text-gray-500'}`}><Sun size={18} /></button>
             <button onClick={() => setTheme('stage')} className={`min-w-[44px] min-h-[44px] flex justify-center items-center rounded-full transition-all ${theme === 'stage' ? 'bg-black shadow-md text-amber-500 border border-amber-500/30' : 'text-gray-500'}`}><Moon size={18} /></button>
             <button onClick={() => setTheme('standard')} className={`min-w-[44px] min-h-[44px] flex justify-center items-center rounded-full transition-all ${theme === 'standard' ? 'bg-blue-500 shadow-md text-white' : 'text-gray-500'}`}><Monitor size={18} /></button>
+            <div className="w-px h-6 bg-gray-300 dark:bg-gray-700 self-center mx-1"></div>
+            <button
+              onClick={handleManualSync}
+              disabled={isSyncing}
+              title="Sincronizar Datos"
+              className={`min-w-[44px] min-h-[44px] flex justify-center items-center gap-2 px-3 rounded-full transition-all font-semibold text-sm ${
+                isSyncing
+                  ? 'text-blue-400 dark:text-amber-400 opacity-60 cursor-not-allowed'
+                  : 'text-blue-500 dark:text-amber-500 hover:bg-blue-500/10 dark:hover:bg-amber-500/10'
+              }`}
+            >
+              <motion.div
+                animate={isSyncing ? { rotate: 360 } : { rotate: 0 }}
+                transition={isSyncing ? { repeat: Infinity, duration: 1, ease: 'linear' } : {}}
+              >
+                <RefreshCw size={17} />
+              </motion.div>
+              <span className="hidden lg:inline">Sincronizar</span>
+            </button>
           </div>
         </div>
       )}
@@ -699,14 +872,32 @@ export default function App() {
               <Mic size={28} />
             </button>
 
-            {/* Right: Tuner */}
-            <button 
-              onClick={() => setIsTunerOpen(true)}
-              className="flex flex-col items-center gap-1 opacity-70 hover:opacity-100 transition-opacity"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22v-9"/><path d="M8 13V6a4 4 0 0 1 8 0v7"/></svg>
-              <span className="text-[10px] font-medium">Afinador</span>
-            </button>
+            {/* Right: Tuner + Sync (mobile stacked) */}
+            <div className="flex flex-col items-center gap-3">
+              <button 
+                onClick={() => setIsTunerOpen(true)}
+                className="flex flex-col items-center gap-1 opacity-70 hover:opacity-100 transition-opacity"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22v-9"/><path d="M8 13V6a4 4 0 0 1 8 0v7"/></svg>
+                <span className="text-[10px] font-medium">Afinador</span>
+              </button>
+              <button
+                onClick={handleManualSync}
+                disabled={isSyncing}
+                className={`flex flex-col items-center gap-1 transition-opacity ${
+                  isSyncing ? 'opacity-40' : 'opacity-70 hover:opacity-100'
+                }`}
+                title="Sincronizar Datos"
+              >
+                <motion.div
+                  animate={isSyncing ? { rotate: 360 } : { rotate: 0 }}
+                  transition={isSyncing ? { repeat: Infinity, duration: 1, ease: 'linear' } : {}}
+                >
+                  <RefreshCw size={22} className="text-blue-500 dark:text-amber-500" />
+                </motion.div>
+                <span className="text-[10px] font-medium">Sincronizar</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
