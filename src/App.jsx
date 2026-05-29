@@ -366,13 +366,41 @@ export default function App({ pwaUpdateAvailable = false, onPwaUpdate = null }) 
     };
 
     return lines.map((line, idx) => {
-      const rawLine = line.toUpperCase();
+      // Clean carriage returns
+      line = line.replace(/\r/g, '');
+      const rawLine = line.toUpperCase().trim();
       let sectionId = null;
       if (rawLine.includes('[CORO]') || rawLine.includes('CORO:') || rawLine === 'CORO') sectionId = 'section-coro';
       else if (rawLine.includes('[ESTROFA]') || rawLine.includes('ESTROFA:') || rawLine === 'ESTROFA' || rawLine.includes('VERSO')) sectionId = 'section-estrofa';
       else if (rawLine.includes('[PUENTE]') || rawLine.includes('PUENTE:') || rawLine === 'PUENTE') sectionId = 'section-puente';
 
-      if (!line.includes('[')) return <div key={idx} id={sectionId || undefined} className={`min-h-12 mb-6 font-mono leading-loose ${fullScreen ? 'text-[7vw] md:text-3xl' : 'text-[1.2rem] md:text-[1.8rem]'}`}>{line}</div>;
+      if (!line.includes('[')) {
+        // Fallback for lines with pure chords (e.g., "G  C  D" or "Am7  D7")
+        const isChordLine = line.trim().length > 0 && line.trim().split(/\s+/).every(word => {
+          return /^[CDEFGAB][#b]?(m|M|maj|min|dim|aug|sus|add)?\d*(\/[CDEFGAB][#b]?)?$/i.test(word);
+        });
+
+        if (isChordLine) {
+          const chords = line.split(/(\s+)/);
+          return (
+            <div key={idx} id={sectionId || undefined} className="flex flex-wrap items-end mb-2 mt-4">
+              <span 
+                className={`font-mono font-bold whitespace-pre-wrap ${fullScreen ? 'text-[5vw] md:text-2xl' : 'text-[1.1rem] md:text-[1.5rem]'}`}
+                style={{ color: theme === 'stage' ? '#00FFFF' : '#2563EB', minHeight: '1.2em' }}
+              >
+                {chords.map(c => c.trim() ? getTransposition(c.trim()) : c).join('')}
+              </span>
+            </div>
+          );
+        }
+
+        // Normal lyric line (no chords)
+        return (
+          <div key={idx} id={sectionId || undefined} className={`min-h-[1.5em] mb-4 mt-2 font-mono leading-normal ${fullScreen ? 'text-[7vw] md:text-3xl' : 'text-[1.2rem] md:text-[1.8rem]'}`} style={{ color: theme === 'stage' ? '#F59E0B' : '#111827' }}>
+            {line}
+          </div>
+        );
+      }
       
       const regex = /\[(.*?)\]([^\[]*)/g;
       const parts = [];
@@ -386,16 +414,23 @@ export default function App({ pwaUpdateAvailable = false, onPwaUpdate = null }) 
       }
 
       return (
-        <div key={idx} id={sectionId || undefined} className="flex flex-wrap items-end mb-10 mt-4">
+        <div key={idx} id={sectionId || undefined} className="flex flex-wrap items-end mb-6 mt-4">
           {parts.map((p, i) => (
-            <div key={i} className="flex flex-col items-start break-inside-avoid" style={{ marginRight: p.lyric.endsWith(' ') ? '0.5em' : '0' }}>
+            <div key={i} className="flex flex-col items-start" style={{ marginRight: '0' }}>
+              {/* Top Row: Chord */}
               <span 
-                className={`font-mono font-bold h-8 mb-3 ${fullScreen ? 'text-[5vw] md:text-2xl' : 'text-[1.1rem] md:text-[1.5rem]'}`}
-                style={{ color: theme === 'stage' ? '#00FFFF' : '#2563EB' }}
+                className={`font-mono font-bold leading-tight mb-0.5 ${fullScreen ? 'text-[5vw] md:text-2xl' : 'text-[1.1rem] md:text-[1.5rem]'}`}
+                style={{ color: theme === 'stage' ? '#00FFFF' : '#2563EB', minHeight: '1.2em' }}
               >
                 {p.chord ? getTransposition(p.chord) : ''}
               </span>
-              <span className={`font-mono whitespace-pre-wrap break-words ${fullScreen ? 'text-[7vw] md:text-3xl' : 'text-[1.2rem] md:text-[1.8rem]'}`}>{p.lyric.replace(/ /g, '\u00A0')}</span>
+              {/* Bottom Row: Lyric */}
+              <span 
+                className={`font-mono whitespace-pre-wrap leading-tight ${fullScreen ? 'text-[7vw] md:text-3xl' : 'text-[1.2rem] md:text-[1.8rem]'}`}
+                style={{ color: theme === 'stage' ? '#F59E0B' : '#111827', minHeight: '1.2em' }}
+              >
+                {p.lyric || ' '}
+              </span>
             </div>
           ))}
         </div>
