@@ -62,6 +62,66 @@ export default function App({ pwaUpdateAvailable = false, onPwaUpdate = null }) 
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // ── AI Heuristic: Convert 2-line chords (G \n Hola) to ChordPro ([G]Hola) ──
+  const isChordLine = (line) => {
+    const trimmed = line.trim();
+    if (!trimmed) return false;
+    return trimmed.split(/\s+/).every(word => /^[CDEFGAB][#b]?(m|M|maj|min|dim|aug|sus|add)?\d*(\/[CDEFGAB][#b]?)?$/i.test(word));
+  };
+
+  const convertTwoLineToChordPro = (text) => {
+    if (!text) return text;
+    const lines = text.split('\n');
+    const result = [];
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].replace(/\r/g, '');
+      
+      // If we find a line of only chords
+      if (isChordLine(line)) {
+        const nextLine = (i + 1 < lines.length) ? lines[i+1].replace(/\r/g, '') : null;
+        
+        // If the next line exists, has content, and is NOT a chord line (it's lyrics)
+        if (nextLine !== null && nextLine.trim().length > 0 && !isChordLine(nextLine)) {
+          let isSectionHeader = /^(CORO|ESTROFA|PUENTE|VERSO)/i.test(nextLine.trim());
+          if (!isSectionHeader) {
+            // Find exactly where each chord starts
+            const chordRegex = /([CDEFGAB][#b]?(?:m|M|maj|min|dim|aug|sus|add)?\d*(?:\/[CDEFGAB][#b]?)?)/gi;
+            let match;
+            const chords = [];
+            while ((match = chordRegex.exec(line)) !== null) {
+              chords.push({ chord: match[1], index: match.index });
+            }
+            
+            // Pad lyrics line if it's shorter than the position of the last chord
+            let merged = nextLine;
+            if (chords.length > 0) {
+              const lastChord = chords[chords.length - 1];
+              if (merged.length < lastChord.index) {
+                merged = merged.padEnd(lastChord.index, ' ');
+              }
+            }
+            
+            // Inject chords right-to-left so indices don't shift
+            for (let j = chords.length - 1; j >= 0; j--) {
+              const { chord, index } = chords[j];
+              merged = merged.substring(0, index) + `[${chord}]` + merged.substring(index);
+            }
+            
+            result.push(merged);
+            i++; // Skip the lyric line since we merged it
+            continue;
+          }
+        }
+      }
+      
+      // Default: push the line unchanged
+      result.push(line);
+    }
+    
+    return result.join('\n');
+  };
+
   // ── CORS-safe fetch helper (cache-busted, no PapaParse XHR) ────────────
   const fetchFromSheet = async () => {
     const base =
@@ -89,7 +149,7 @@ export default function App({ pwaUpdateAvailable = false, onPwaUpdate = null }) 
               tone: row['Tono'],
               bpm: parseInt(row['BPM']) || 100,
               category: row['Categoría'],
-              content: row['Contenido (Letra y Acordes para IA)'] || '',
+              content: convertTwoLineToChordPro(row['Contenido (Letra y Acordes para IA)'] || ''),
             }));
           resolve(parsed);
         },
