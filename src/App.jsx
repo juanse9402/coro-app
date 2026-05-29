@@ -177,11 +177,11 @@ export default function App({ pwaUpdateAvailable = false, onPwaUpdate = null }) 
     if (workerRef.current) {
       workerRef.current.postMessage({ songs, query: searchQuery, requestId: id });
     } else {
-      // Sync fallback (no Worker support)
+      // Sync fallback: show all songs (no artificial cap)
       if (!searchQuery.trim()) {
-        setDisplaySongs(songs.slice(0, 20));
+        setDisplaySongs(songs);
       } else {
-        setDisplaySongs(songs.slice(0, 20));
+        setDisplaySongs(songs);
       }
     }
   }, [songs, searchQuery]);
@@ -551,6 +551,20 @@ export default function App({ pwaUpdateAvailable = false, onPwaUpdate = null }) 
         <div className="w-full max-w-4xl flex justify-between items-center mb-6">
           <div className="flex items-center gap-2 md:gap-4">
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Coro Pro-Web</h1>
+            {/* Song counter */}
+            {songs.length > 0 && (
+              <div
+                className="flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full"
+                style={{
+                  color: theme === 'stage' ? '#f59e0b' : '#2563eb',
+                  background: theme === 'stage' ? 'rgba(245,158,11,0.12)' : 'rgba(37,99,235,0.08)'
+                }}
+                title="Total de canciones cargadas"
+              >
+                <Music size={11} />
+                {songs.length} canciones
+              </div>
+            )}
             {syncStatus === 'synced' && <div className="hidden sm:flex items-center gap-1 text-xs font-bold text-green-500 bg-green-500/10 px-2 py-1 rounded-full" title="Sincronizado con la nube"><CloudCheck size={14} /> Sync</div>}
             {syncStatus === 'offline' && <div className="hidden sm:flex items-center gap-1 text-xs font-bold text-gray-400 bg-gray-500/10 px-2 py-1 rounded-full" title="Modo Offline"><CloudOff size={14} /> Local</div>}
           </div>
@@ -651,7 +665,7 @@ export default function App({ pwaUpdateAvailable = false, onPwaUpdate = null }) 
                 );
               })}
               {displaySongs.length === 0 && <p className="text-center opacity-50 py-10">No se encontraron canciones.</p>}
-              {searchQuery.trim().length > 0 && displaySongs.length >= 20 && <p className="text-center opacity-50 text-sm mt-4 font-mono">Mostrando 20 resultados principales. Escribe más para filtrar.</p>}
+              {searchQuery.trim().length > 0 && displaySongs.length >= 50 && <p className="text-center opacity-50 text-sm mt-4 font-mono">Mostrando los 50 mejores resultados. Escribe más para filtrar.</p>}
             </div>
 
             {/* Floating Action Buttons Removed */}
@@ -872,32 +886,14 @@ export default function App({ pwaUpdateAvailable = false, onPwaUpdate = null }) 
               <Mic size={28} />
             </button>
 
-            {/* Right: Tuner + Sync (mobile stacked) */}
-            <div className="flex flex-col items-center gap-3">
-              <button 
-                onClick={() => setIsTunerOpen(true)}
-                className="flex flex-col items-center gap-1 opacity-70 hover:opacity-100 transition-opacity"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22v-9"/><path d="M8 13V6a4 4 0 0 1 8 0v7"/></svg>
-                <span className="text-[10px] font-medium">Afinador</span>
-              </button>
-              <button
-                onClick={handleManualSync}
-                disabled={isSyncing}
-                className={`flex flex-col items-center gap-1 transition-opacity ${
-                  isSyncing ? 'opacity-40' : 'opacity-70 hover:opacity-100'
-                }`}
-                title="Sincronizar Datos"
-              >
-                <motion.div
-                  animate={isSyncing ? { rotate: 360 } : { rotate: 0 }}
-                  transition={isSyncing ? { repeat: Infinity, duration: 1, ease: 'linear' } : {}}
-                >
-                  <RefreshCw size={22} className="text-blue-500 dark:text-amber-500" />
-                </motion.div>
-                <span className="text-[10px] font-medium">Sincronizar</span>
-              </button>
-            </div>
+            {/* Right: Tuner only */}
+            <button 
+              onClick={() => setIsTunerOpen(true)}
+              className="flex flex-col items-center gap-1 opacity-70 hover:opacity-100 transition-opacity"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22v-9"/><path d="M8 13V6a4 4 0 0 1 8 0v7"/></svg>
+              <span className="text-[10px] font-medium">Afinador</span>
+            </button>
           </div>
         </div>
       )}

@@ -25,9 +25,9 @@ function getLevenshteinDistance(a, b) {
 self.onmessage = function (e) {
   const { songs, query, requestId } = e.data;
 
-  // Empty query → return first 20 sorted by ID
+  // Empty query → return ALL songs (no artificial cap)
   if (!query || !query.trim()) {
-    self.postMessage({ results: songs.slice(0, 20), requestId });
+    self.postMessage({ results: songs, requestId });
     return;
   }
 
@@ -108,7 +108,7 @@ self.onmessage = function (e) {
   const results = processed
     .filter(s => s.score > 0)
     .sort((a, b) => b.score - a.score)
-    .slice(0, 20);
+    .slice(0, 50); // Top 50 matches
 
   self.postMessage({ results, requestId });
 };
